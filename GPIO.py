@@ -22,29 +22,31 @@ class GPIOHandler:
         self.stateLoop1, self.stateLoop2, self.stateButton, self.stateGate, self.setDate, self.bypass_print = False, False, False, False, False, False
         
         # read config file
-        file = self.getPath("config.cfg")
+        # file = self.getPath("config.cfg")
         self.config = ConfigParser()
-        self.config.read(file)
+        self.config.read("/home/pi/config.cfg")
 
         # buat koneksi socket utk GPIO
         host = sys.argv[1]
         port = int(sys.argv[2])
         
         self.gpio_stat = False
+        self.conn_server_stat = False
         # start_new_thread( self.run_GPIO,() )
         
         # self.run_GPIO()
-        
+        print("==> run main thread")
         while True:
             if not self.gpio_stat:
                 start_new_thread( self.run_GPIO,() )
+                start_new_thread( self.rfid_input,() )
                 self.gpio_stat = True
 
             try:
                 self.s.sendall( bytes(f"client({host}) connected", 'utf-8') )
             except:
                 self.logger.debug("GPIO handshake fail")
-
+                self.conn_server_stat = False
                 try:
                     self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                     self.s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -64,10 +66,11 @@ class GPIOHandler:
                     ###########################
 
                     # run input RFID thread
-                    start_new_thread( self.rfid_input,() )
+                    # start_new_thread( self.rfid_input,() )
                     # self.run_GPIO()
+                    self.conn_server_stat = True
                 except Exception as e:
-                    # self.s = None
+                    self.conn_server_stat = False
                     self.logger.info("GPIO handshake fail")
                     self.logger.error(str(e))
         
@@ -77,7 +80,7 @@ class GPIOHandler:
         
         self.logger = logging.getLogger()
         self.logger.setLevel(logging.NOTSET)
-        self.logfile_path = "./log_file.log"
+        self.logfile_path = "/home/pi/log_file.log"
 
         # our first handler is a console handler
         console_handler = logging.StreamHandler()
@@ -135,7 +138,7 @@ class GPIOHandler:
         p.text(new_time_text + "\n")
         
         if status_online==False:
-            p.text("OFFLINE\n")
+            p.text("**OFFLINE**\n")
         
         p.text("\n")
         
@@ -153,8 +156,19 @@ class GPIOHandler:
         p.cut()
         p.close()
 
+        # if offline still open gate after print struct
+        if not status_online:
+            self.stateButton = True
+            self.stateGate = True
+            GPIO.output(self.led2,GPIO.HIGH)
+            self.logger.info("RELAY ON (Gate Open)")
+            GPIO.output(self.gate,GPIO.HIGH)
+            sleep(1)
+            GPIO.output(self.gate,GPIO.LOW)
+            self.logger.info("RELAY OFF")
+
     def run_GPIO(self):
-        
+        print("==> run GPIO thread")
         GPIO.setwarnings(False)
         GPIO.setmode(GPIO.BOARD)
         GPIO.setup(self.loop1, GPIO.IN, pull_up_down=GPIO.PUD_UP)
@@ -170,6 +184,7 @@ class GPIOHandler:
                 self.logger.debug("LOOP 1 ON (Vehicle Incoming)")
                 self.stateLoop1 = True
                 self.bypass_print = True
+                self.bypass_rfid = True
                 GPIO.output(self.led1,GPIO.HIGH)
                 
             elif GPIO.input(self.loop1) == GPIO.HIGH and self.stateLoop1:  
@@ -195,15 +210,24 @@ class GPIOHandler:
 
                 try:
                     # komen disini
-                    self.s.sendall( bytes(dict_txt, 'utf-8') )
+                    print("==> coba print ... stat server: ", self.conn_server_stat)
+                    
+                    if not self.conn_server_stat:
+                        self.print_barcode(self.barcode ,status_online=False)
+                        # self.bypass_print = False
+                    
+                    elif self.conn_server_stat:
+                        self.s.sendall( bytes(dict_txt, 'utf-8') )
+
                 except Exception as e:
+                    # print("===>bypass print", self.bypass_print)
                     # call print barcode here , with certain parameter
                     # check jika kendaraan sudah lewat loop 1 atau belum ?
                     # jika belum lewat tidak boleh eksekusi kode dibawah
                     # print("===> self.stateLoop1", self.stateLoop1)
-                    if self.bypass_print:
-                        self.print_barcode(self.barcode ,status_online=False)
-                        self.bypass_print = False
+                    # if self.bypass_print:
+                    #     self.print_barcode(self.barcode ,status_online=False)
+                    #     self.bypass_print = False
                     
                     self.logger.error(str(e))
                 
@@ -225,20 +249,35 @@ class GPIOHandler:
             sleep(0.5)
 
     def rfid_input(self):
+        print("===> run rfid thread")
         while True:
+            print("...rfid thread ... ")
+            # sleep(0.3)
             rfid = input("input RFID: ")
+            print("==> nilai rfid: ", rfid)
             
             if rfid != "":
+                
                 # send to server
-
                 try:
-                    self.s.sendall( bytes(f"rfid#{rfid}#end", 'utf-8') )
+                    print("===> server stat: ", self.conn_server_stat)
+                    
+                    if self.conn_server_stat:
+                        self.s.sendall( bytes(f"rfid#{rfid}#end", 'utf-8') )
+                    
+                    elif not self.conn_server_stat:
+                        # still open gate if fail
+                        GPIO.output(self.gate,GPIO.HIGH)
+                        sleep(1)
+                        GPIO.output(self.gate,GPIO.LOW)
+
                 except Exception as e:
                     self.logger.info("send RFID to server fail")
                     self.logger.error(str(e))
 
 
     def recv_server(self):
+        print("===> run recv server thread")
         while True:
             while True:
     
@@ -314,6 +353,3 @@ class GPIOHandler:
                            
 
 obj = GPIOHandler()
-
-# while True:
-#     pass
