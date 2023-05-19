@@ -17,10 +17,17 @@ class GPIOHandler:
         
         # global variable
         self.led1, self.led2, self.led3, self.gate = 8,10,11,18
+        self.connected = 16
+        self.threads = 18
+        self.shutdown = 15
+        
         self.loop1, self.loop2, self.button = 12,13,7
 
         self.stateLoop1, self.stateLoop2, self.stateButton, self.stateGate, self.setDate, self.bypass_print = False, False, False, False, False, False
         
+        GPIO.setwarnings(False)
+        GPIO.setmode(GPIO.BOARD)
+
         # read config file
         # file = self.getPath("config.cfg")
         self.config = ConfigParser()
@@ -32,17 +39,15 @@ class GPIOHandler:
         
         self.gpio_stat = False
         self.conn_server_stat = False
+        self.printer_stat = False
         # start_new_thread( self.run_GPIO,() )
         
         # self.run_GPIO()
         print("==> run main thread")
         while True:
-            if not self.gpio_stat:
-                start_new_thread( self.run_GPIO,() )
-                start_new_thread( self.rfid_input,() )
-                self.gpio_stat = True
-
+            
             try:
+                # ping -> always send each seconds
                 self.s.sendall( bytes(f"client({host}) connected", 'utf-8') )
             except:
                 self.logger.debug("GPIO handshake fail")
@@ -50,6 +55,7 @@ class GPIOHandler:
                 try:
                     self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                     self.s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                    self.s.settimeout(5)
                     self.s.connect((host, port))
 
                     self.s.sendall( bytes(f"GPIO handshake from {host}:{port}", 'utf-8') )
@@ -58,23 +64,44 @@ class GPIOHandler:
                     # standby data yg dikirim dari server disini
                     start_new_thread( self.recv_server,() )
                     
-                    ########### get server date --> if time not set don't start the raspi
-                    while self.setDate==False:
-                        self.s.sendall( bytes(f"date#getdate#end", 'utf-8') )
-                        self.logger.info("get date from server ... ")
-                        sleep(5)
+                    ########### get server date
+                    self.s.sendall( bytes(f"date#getdate#end", 'utf-8') )
+                    self.logger.info("get date from server ... ")
                     ###########################
 
                     # run input RFID thread
                     # start_new_thread( self.rfid_input,() )
                     # self.run_GPIO()
                     self.conn_server_stat = True
+
+                    # ======== connect indicator on ========
+                    GPIO.setup(self.connected, GPIO.OUT)
+                    GPIO.output(self.connected,GPIO.HIGH)
+                    #======================================
+
+
                 except Exception as e:
+                    # ======== connect indicator off ========
+                    GPIO.setup(self.connected, GPIO.OUT)
+                    GPIO.output(self.connected,GPIO.LOW)
+                    #======================================
+
                     self.conn_server_stat = False
                     self.logger.info("GPIO handshake fail")
                     self.logger.error(str(e))
         
-                sleep(5)
+            # run threads GPIO and rfid only once
+            if not self.gpio_stat:
+                start_new_thread( self.run_GPIO,() )
+                start_new_thread( self.rfid_input,() )
+                self.gpio_stat = True
+
+                # ======== gpio thread and rfid indicator on ========
+                GPIO.setup(self.threads, GPIO.OUT)
+                GPIO.output(self.threads,GPIO.HIGH)
+                #======================================
+
+            sleep(5)
 
     def initDebug(self):
         
@@ -169,11 +196,12 @@ class GPIOHandler:
 
     def run_GPIO(self):
         print("==> run GPIO thread")
-        GPIO.setwarnings(False)
-        GPIO.setmode(GPIO.BOARD)
+        # GPIO.setwarnings(False)
+        # GPIO.setmode(GPIO.BOARD)
         GPIO.setup(self.loop1, GPIO.IN, pull_up_down=GPIO.PUD_UP)
         GPIO.setup(self.loop2, GPIO.IN, pull_up_down=GPIO.PUD_UP)
         GPIO.setup(self.button, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+        GPIO.setup(self.shutdown, GPIO.IN, pull_up_down=GPIO.PUD_UP)
         GPIO.setup(self.led1, GPIO.OUT)
         GPIO.setup(self.led2, GPIO.OUT)
         GPIO.setup(self.led3, GPIO.OUT)
@@ -217,7 +245,12 @@ class GPIOHandler:
                         # self.bypass_print = False
                     
                     elif self.conn_server_stat:
-                        self.s.sendall( bytes(dict_txt, 'utf-8') )
+                        
+                        # if print button pushed more than once
+                        if not self.printer_stat:
+                            self.printer_stat = True
+                            self.s.sendall( bytes(dict_txt, 'utf-8') )
+                            sleep(3)
 
                 except Exception as e:
                     # print("===>bypass print", self.bypass_print)
@@ -245,8 +278,11 @@ class GPIOHandler:
                 self.logger.info(".........(Gate Close)")
                 self.stateLoop2 = False 
                 self.stateGate = False
-                                        
-            sleep(0.5)
+
+            if GPIO.input(self.shutdown) == GPIO.LOW:
+                print("shutdown")
+
+            sleep(0.2)
 
     def rfid_input(self):
         print("===> run rfid thread")
@@ -275,81 +311,85 @@ class GPIOHandler:
                     self.logger.info("send RFID to server fail")
                     self.logger.error(str(e))
 
+            sleep(0.2)
 
     def recv_server(self):
         print("===> run recv server thread")
         while True:
-            while True:
-    
-                # maintains a list of possible input streams
-                sockets_list = [sys.stdin, self.s]
-            
-                read_sockets,write_socket, error_socket = select.select(sockets_list,[],[])
-            
-                for socks in read_sockets:
-                    if socks == self.s:
-                        try:
-                            message = socks.recv(1024)
-                            message = message.decode("utf-8")
 
-                            if message == "rfid-true":
-                                self.logger.info("open Gate Utk Karyawan")
+            # maintains a list of possible input streams
+            sockets_list = [sys.stdin, self.s]
+        
+            read_sockets,write_socket, error_socket = select.select(sockets_list,[],[])
+        
+            for socks in read_sockets:
+                if socks == self.s:
+                    try:
+                        message = socks.recv(1024)
+                        message = message.decode("utf-8")
 
-                                GPIO.output(self.gate,GPIO.HIGH)
-                                sleep(1)
-                                GPIO.output(self.gate,GPIO.LOW)
+                        if message == "rfid-true":
+                            self.logger.info("open Gate Utk Karyawan")
 
-                            elif message == "rfid-false":
-                                self.logger.debug("RFID not match !")
+                            GPIO.output(self.gate,GPIO.HIGH)
+                            sleep(1)
+                            GPIO.output(self.gate,GPIO.LOW)
 
-                            elif message == "printer-true":
-                                self.logger.debug("print struct here ...")
-                                self.print_barcode(str(self.barcode))
+                        elif message == "rfid-false":
+                            self.logger.debug("RFID not match !")
 
-                                self.logger.info("BUTTON ON (Printing Ticket)")
-                    
-                                self.stateButton = True
-                                self.stateGate = True
-                                GPIO.output(self.led2,GPIO.HIGH)
-                                self.logger.info("RELAY ON (Gate Open)")
-                                GPIO.output(self.gate,GPIO.HIGH)
-                                sleep(1)
-                                GPIO.output(self.gate,GPIO.LOW)
-                                self.logger.info("RELAY OFF")
+                        elif message == "printer-true":
+                            self.logger.debug("print struct here ...")
+                            self.print_barcode(str(self.barcode))
 
-                            elif "config#" in message :
-                                print("========== change config =============")
-                                self.logger.debug("get message ...")
-                                message = re.search('config#(.+?)#end', message).group(1)
-                                message = json.loads(message)
-                                self.logger.debug(message)
-                                
-                                self.logger.info("write to file ... ")
-                                # config = ConfigParser()
-                                # self.config.read('config.cfg')
+                            self.logger.info("BUTTON ON (Printing Ticket)")
+                
+                            self.stateButton = True
+                            self.stateGate = True
+                            GPIO.output(self.led2,GPIO.HIGH)
+                            self.logger.info("RELAY ON (Gate Open)")
+                            GPIO.output(self.gate,GPIO.HIGH)
+                            sleep(1)
+                            GPIO.output(self.gate,GPIO.LOW)
+                            self.logger.info("RELAY OFF")
+                            self.printer_stat = False
 
-                                self.config['ID']['LOKASI'] = message['tempat']                                
-                                self.config['KARCIS']['FOOTER1'] = message['footer1']                                
-                                self.config['KARCIS']['FOOTER2'] = message['footer2']                                
-                                self.config['KARCIS']['FOOTER3'] = message['footer3']
 
-                                with open('config.cfg', 'w') as configfile:
-                                    self.config.write(configfile)
+                        elif "config#" in message :
+                            print("========== change config =============")
+                            self.logger.debug("get message ...")
+                            message = re.search('config#(.+?)#end', message).group(1)
+                            message = json.loads(message)
+                            self.logger.debug(message)
+                            
+                            self.logger.info("write to file ... ")
+                            # config = ConfigParser()
+                            # self.config.read('config.cfg')
 
-                                print("==> nama lokasi: ", self.config['ID']['LOKASI'])
-                                print("=====================================")
+                            self.config['ID']['LOKASI'] = message['tempat']                                
+                            self.config['KARCIS']['FOOTER1'] = message['footer1']                                
+                            self.config['KARCIS']['FOOTER2'] = message['footer2']                                
+                            self.config['KARCIS']['FOOTER3'] = message['footer3']
 
-                            elif "date#" in message :
-                                date_time = re.search('date#(.+?)#end', message).group(1)
-                                print("date from server: ", date_time)
-                                print(f"sudo date -s '{date_time}'")
-                                
-                                # set raspi date
-                                os.system(f"sudo date -s '{date_time}'")
-                                self.setDate = True
-                                
-                        except Exception as e:
-                            self.logger.error(str(e))
-                           
+                            with open('config.cfg', 'w') as configfile:
+                                self.config.write(configfile)
+
+                            print("==> nama lokasi: ", self.config['ID']['LOKASI'])
+                            print("=====================================")
+
+                        elif "date#" in message :
+                            date_time = re.search('date#(.+?)#end', message).group(1)
+                            print("date from server: ", date_time)
+                            print(f"sudo date -s '{date_time}'")
+                            
+                            # set raspi date
+                            os.system(f"sudo date -s '{date_time}'")
+                            self.setDate = True
+                            sleep(3)
+                            
+                    except Exception as e:
+                        self.logger.error(str(e))
+                        
+            sleep(0.2)
 
 obj = GPIOHandler()
