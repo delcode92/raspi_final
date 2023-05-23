@@ -165,6 +165,7 @@ class GPIOHandler:
         p.text(new_time_text + "\n")
         
         if status_online==False:
+            barcode = "000" + str(barcode) # add 000 for offline barcode
             p.text("**OFFLINE**\n")
         
         p.text("\n")
