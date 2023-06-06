@@ -1,30 +1,35 @@
 #include <stdio.h>
-#include <fcntl.h>
-#include <unistd.h>
+#include <string.h>
+
+// Function to send data to the printer
+void sendToPrinter(const char* data) {
+    FILE* printer = fopen("/dev/usb/lp0", "w");  // Replace "/dev/usb/lp0" with your printer device
+
+    if (printer == NULL) {
+        printf("Failed to open the printer.\n");
+        return;
+    }
+
+    fprintf(printer, "%s", data);
+    fclose(printer);
+}
 
 int main() {
-    int printer_fd = open("/dev/ttys008", O_WRONLY | O_NOCTTY);
-    if (printer_fd == -1) {
-        printf("wkwkwkw");
-        perror("Failed to open printer");
-        return 1;
-    }
-    printf("data : %d",printer_fd);
-    
-    // // Text to print
-    const char* text = "Hello, Thermal Printer!\n";
-    
-    // // Write the text to the printer
-    ssize_t bytes_written = write(printer_fd, text, 10000);
-    if (bytes_written == -1) {
-        perror("Failed to write to printer");
-        close(printer_fd);
-        return 1;
-    }
-    
-    // // Close the printer
-    close(printer_fd);
-    printf("Hello, World!");
+    char userInput[] = "cempaka \n metro karya \n ------------------------------------\n\n gate:1  \n motor \n";
+
+    printf("Enter text to print: ");
+    // fgets(userInput, sizeof(userInput), stdin);
+
+    // Remove newline character from user input
+    // userInput[strcspn(userInput, "\n")] = '\0';
+
+    // ESC/POS commands to print user input in bold and large font size
+    char escpos[512];
+    snprintf(escpos, sizeof(escpos), "\x1B\x21\x08%s\n", userInput);  // Modify the ESC/POS commands based on your printer capabilities
+
+    sendToPrinter(escpos);
+
+    printf("Printing complete.\n");
 
     return 0;
 }
