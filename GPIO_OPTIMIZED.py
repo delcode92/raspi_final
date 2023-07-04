@@ -19,12 +19,20 @@ class logging:
     
 class GPIOHandler:
     def __init__(self) -> None:
-        
+
+        # read config file
+        print("read config file ...")
+        self.config = ConfigParser()
+        self.config.read( os.path.expanduser("config.cfg") )
+
+
         # init for debug
-        self.logger = logging(False)
-        #self.initDebug()
-        
+        print("set logger message ...")
+        self.logger = logging( int(self.config['APP']['SHOW_LOGGER']) )
+
+
         # global variable
+        print("set GPIO pin ... ")
         self.led1, self.led2, self.gate = 8,10,18
         self.connected = 29
         self.threads = 31
@@ -39,15 +47,10 @@ class GPIOHandler:
         GPIO.setwarnings(False)
         GPIO.setmode(GPIO.BOARD)
 
-        # read config file
-        # file = self.getPath("config.cfg")
-        self.config = ConfigParser()
-        self.config.read( os.path.expanduser("/home/pi/config.cfg") )
-
         # buat koneksi socket utk GPIO
-        host = sys.argv[1]
-        port = int(sys.argv[2])
-
+        host = int(self.config['APP']['SERVER_IP'])
+        port = int(self.config['APP']['PORT'])
+        
                 
         self.gpio_stat = False
         self.conn_server_stat = False
@@ -56,37 +59,25 @@ class GPIOHandler:
         self.blinking_printer_thread = False
         self.blinking_flag = True
         
-        # usb printer init
-        # vid = int( self.config['PRINTER']['VID'], 16 )
-        # pid = int( self.config['PRINTER']['PID'], 16 )
-        # in_ep = int( self.config['PRINTER']['IN'], 16 )
-        # out_ep = int( self.config['PRINTER']['OUT'], 16 )
-        # self.p = Usb(vid, pid , timeout = 0, in_ep = in_ep, out_ep = out_ep)
-        ###########################
-
-        # start_new_thread( self.run_GPIO,() )
+        
         
         # self.run_GPIO()
-        print("==> run main thread")
+        print("Run main thread ... ")
         while True:
             
             try:
-                # ping -> always send each seconds
-                print("\n\n\n")
+                # 1. send ping -> always send each ping couple of seconds
                 response = os.system("ping -c 1 " + host)
-                print("\n\n\n")
+                self.logger.debug(f"ping to {host} response: ", response)
 
-                print("ping response: ", response)
-
-                if response == 0:
-                    print("ok")
-                else:
+                if response != 0:
                     self.s = None
 
+                # 2. send bytes of data string
                 self.s.sendall( bytes(f"client({host}) connected", 'utf-8') )
                 self.blinking_flag = False
             except:
-                self.logger.debug("GPIO handshake fail")
+                self.logger.debug("\n\n===> GPIO handshake fail <===\n\n")
                 self.conn_server_stat = False
                 self.blinking_flag = True
                 try:
@@ -96,7 +87,7 @@ class GPIOHandler:
                     self.s.connect((host, port))
 
                     self.s.sendall( bytes(f"GPIO handshake from {host}:{port}", 'utf-8') )
-                    self.logger.info("GPIO handshake success")
+                    self.logger.info("\n\n===> GPIO handshake success <===\n\n")
                     
                     # standby data yg dikirim dari server disini
                     start_new_thread( self.recv_server,() )
@@ -203,24 +194,6 @@ class GPIOHandler:
             
             new_time_text = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
             self.p = Usb(vid, pid , timeout = 0, in_ep = in_ep, out_ep = out_ep)
-            #print("\n\n selesai init \n\n")
-            #self.p.set('center')
-            #self.p.text('tester data') 
-
-            #if status_online==False:
-                #barcode = "000" + str(barcode) # add 000 for offline barcode
-
-                #self.p.text("**OFFLINE**\n")
-
-
-            #self.p.text("\n")
-            #self.p.barcode("{B" + str(barcode), "CODE128", height=128, width=2, function_type="B")
-
-            #self.p.cut()
-            #self.p.close()  
-            
-            # p = Usb(vid, pid , timeout = 0, in_ep = in_ep, out_ep = out_ep)
-            #paper_stat = self.p.paper_status()
             paper_stat = 2
             
             # plenty of paper
@@ -331,8 +304,6 @@ class GPIOHandler:
 
     def run_GPIO(self):
         print("==> run GPIO thread")
-        # GPIO.setwarnings(False)
-        # GPIO.setmode(GPIO.BOARD)
         GPIO.setup(self.loop1, GPIO.IN, pull_up_down=GPIO.PUD_UP)
         GPIO.setup(self.loop2, GPIO.IN, pull_up_down=GPIO.PUD_UP)
         
@@ -352,40 +323,6 @@ class GPIOHandler:
         counter_up = 0
 
         while True:
-
-            # x = (GPIO.input(self.loop1) +  self.stateLoop1 + 
-            # GPIO.input(self.loop1) + GPIO.input(self.button) + 
-            # GPIO.input(self.loop1) + self.stateButton + 
-            # self.stateGate  + GPIO.input(self.loop2) + 
-            # self.stateLoop2 + GPIO.input(self.resetPrintCounter) + GPIO.input(self.shutdown) + press_up )
-
-            # ambil x=6 ==> utk posisi hidup/mati loop 1
-            # ambil x=6 ==> utk posisi hidup/mati loop 1
-            
-
-            x = (GPIO.input(self.loop1) + GPIO.input(self.loop2) + GPIO.input(self.button) + 
-            GPIO.input(self.resetPrintCounter) + GPIO.input(self.shutdown) + 
-            self.stateLoop1 + self.stateLoop2 + self.bypass_print + self.bypass_rfid 
-            + self.stateGate + self.stateButton + press_down + press_up)
-
-            print("\n\n\n=======================")
-            print("GPIO.input(self.loop1): ", GPIO.input(self.loop1))
-            print("GPIO.input(self.loop2): ", GPIO.input(self.loop2))
-            print("GPIO.input(self.button): ", GPIO.input(self.button))
-            print("GPIO.input(self.resetPrintCounter): ", GPIO.input(self.resetPrintCounter))
-            print("GPIO.input(self.shutdown): ", GPIO.input(self.shutdown))
-            
-            print("self.stateLoop1: ", self.stateLoop1)
-            print("self.stateLoop2: ", self.stateLoop2)
-            print("self.bypass_print: ", self.bypass_print)
-            print("self.bypass_rfid: ", self.bypass_rfid)
-            print("self.stateGate: ", self.stateGate)
-            print("self.stateButton: ", self.stateButton)
-            print("press_down: ", press_down)
-            print("press_up: ", press_up)
-
-            print("=====> nilai X : ", x)
-            print("==========================")
 
             if GPIO.input(self.loop1) == GPIO.LOW and not self.stateLoop1:
 
@@ -477,7 +414,7 @@ class GPIOHandler:
                 
                 self.config['PRINTER']['COUNTER'] = "0"
                 
-                path = os.path.expanduser('/home/pi/config.cfg')
+                path = os.path.expanduser('config.cfg')
                 with open(path, 'w') as configfile:
                     self.config.write(configfile)
 
@@ -521,7 +458,7 @@ class GPIOHandler:
             # =============== end btn shutdown/reboot ==========
             
 
-            sleep(0.3)
+            sleep(0.1)
 
     def rfid_input(self):
         print("===> run rfid thread")
