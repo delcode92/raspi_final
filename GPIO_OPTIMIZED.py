@@ -2,7 +2,7 @@ import RPi.GPIO as GPIO
 import sys, socket, select, os, re, json
 from time import sleep
 from datetime import datetime
-import threading
+from _thread import start_new_thread
 from escpos.printer import Usb
 from configparser import ConfigParser
 
@@ -48,7 +48,7 @@ class GPIOHandler:
         GPIO.setmode(GPIO.BOARD)
 
         # buat koneksi socket utk GPIO
-        host = int(self.config['APP']['SERVER_IP'])
+        host = self.config['APP']['SERVER_IP']
         port = int(self.config['APP']['PORT'])
         
                 
@@ -90,8 +90,7 @@ class GPIOHandler:
                     self.logger.info("\n\n===> GPIO handshake success <===\n\n")
                     
                     # standby data yg dikirim dari server disini
-                    recv_serv_thread = threading.Thread(target=self.recv_server)
-                    recv_serv_thread.start()
+                    start_new_thread( self.recv_server,() )
                     
                     ########### get server date
                     self.s.sendall( bytes(f"date#getdate#end", 'utf-8') )
@@ -114,8 +113,9 @@ class GPIOHandler:
                     # ======== connect indicator off ========
                     if not self.blinking_thread:
                         print("pernah stop blinking disini")
-                        blink_thread = threading.Thread(target=self.blink)
-                        blink_thread.start()
+                        start_new_thread( self.blink,() )
+                        # GPIO.setup(self.connected, GPIO.OUT)
+                    # GPIO.output(self.connected,GPIO.LOW)
                     #======================================
 
                     self.conn_server_stat = False
@@ -125,15 +125,9 @@ class GPIOHandler:
         
             # run threads GPIO and rfid only once
             if not self.gpio_stat:
-                if int( self.config['APP']['GPIO_OPTIMIZED'] ):
-                    op_GPIO_thread = threading.Thread(target=self.run_OPTIMIZED_GPIO)
-                    op_GPIO_thread.start()
-                else:
-                    old_GPIO_thread = threading.Thread(target=self.run_GPIO)
-                    old_GPIO_thread.start()
-                    
-                rfid_input_thread = threading.Thread(target=self.rfid_input)
-                rfid_input_thread.start()
+                start_new_thread( self.run_OPTIMIZED_GPIO,() )
+                # start_new_thread( self.run_GPIO,() )
+                start_new_thread( self.rfid_input,() )
                 self.gpio_stat = True
 
                 # ======== gpio thread and rfid indicator on ========
@@ -217,11 +211,20 @@ class GPIOHandler:
                 self.p.text("\n------------------------------------\n" + footer1 + "\n" + footer2 + "\n" + footer3 + "\n" + footer4 + "\n")
 
                 # Cut paper
-                if int(self.config['APP']['CUT_PAPER']):
-                    self.p.cut(feed=False)
+                #self.p.cut(feed=False)
                 self.p.close()
 
+            
+                #print("===> finish update print counter") 
                 
+            
+
+                #############################################################
+
+            #elif paper_stat == 1 or paper_stat == 0:
+                            #print("\n\n\n KERTAS HABIS/DIAMBANG BATAS .... \n\n\n")
+                #self.blinking_printer_thread = True
+
             # if offline still open gate after print struct
             if not status_online:
                 self.stateButton = True
@@ -335,6 +338,7 @@ class GPIOHandler:
                 self.stateGate = False
                 GPIO.output(self.led1,GPIO.LOW)
                 
+            # ubah minggu 
             if ( GPIO.input(self.button) == GPIO.LOW and 
                 GPIO.input(self.loop1) == GPIO.LOW and 
                 not self.stateButton and 
@@ -368,6 +372,8 @@ class GPIOHandler:
                         except Exception as e:
                             print("==> error", str(e))
 
+                        # self.bypass_print = False
+                    
                     elif self.conn_server_stat:
                         
                         # if print button pushed more than once
@@ -377,6 +383,14 @@ class GPIOHandler:
                             sleep(1)
 
                 except Exception as e:
+                    # print("===>bypass print", self.bypass_print)
+                    # call print barcode here , with certain parameter
+                    # check jika kendaraan sudah lewat loop 1 atau belum ?
+                    # jika belum lewat tidak boleh eksekusi kode dibawah
+                    # print("===> self.stateLoop1", self.stateLoop1)
+                    # if self.bypass_print:
+                    #     self.print_barcode(self.barcode ,status_online=False)
+                    #     self.bypass_print = False
                     self.logger.error(str(e))
                 
             elif GPIO.input(self.button) == GPIO.HIGH and GPIO.input(self.loop1) == GPIO.LOW and self.stateButton:
@@ -433,13 +447,12 @@ class GPIOHandler:
                 # if press time more than 3 seconds
                 if counter_down > 6:
                     print("shutdown")
-                    os.system( self.config['APP']['POWEROFF_CMD'] )
+                    os.system("sudo poweroff")
 
                 # if press time less than 3 seconds
                 elif counter_down < 6:
-                    # restart APP
-                    print("restart APP")
-                    os.system(self.config['APP']['RESTART_APP_CMD'])
+                    print("restart")
+                    os.system("sudo reboot")
 
                 counter_down = 0
             # =============== end btn shutdown/reboot ==========
@@ -450,7 +463,8 @@ class GPIOHandler:
     def rfid_input(self):
         print("===> run rfid thread")
         while True:
-            print("rfid thread ... ")
+            print("...rfid thread ... ")
+            # sleep(0.3)
             rfid = input("input RFID: ")
             print("==> nilai rfid: ", rfid)
             
@@ -560,4 +574,5 @@ class GPIOHandler:
             sleep(0.002)
 
 obj = GPIOHandler()
+
 
