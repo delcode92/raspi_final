@@ -51,7 +51,7 @@ class GPIOHandler:
         GPIO.setmode(GPIO.BOARD)
 
         # buat koneksi socket utk GPIO
-        host = int(self.config['APP']['SERVER_IP'])
+        host = self.config['APP']['SERVER_IP']
         port = int(self.config['APP']['PORT'])
         
                 
