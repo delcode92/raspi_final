@@ -78,7 +78,7 @@ class GPIOHandler:
             try:
                 # 1. send ping -> always send each ping couple of seconds
                 response = os.system(ping+ " " + host)
-                self.logger.debug(f"ping to {host} response: ", response)
+                self.logger.debug(f"ping to {host} response: " + response)
 
                 if response != 0:
                     self.s = None
