@@ -86,8 +86,10 @@ class GPIOHandler:
                 # 2. send bytes of data string
                 self.s.sendall( bytes(f"client({host}) connected", 'utf-8') )
                 self.blinking_flag = False
-            except:
+            except Exception as e:
                 self.logger.debug("\n\n===> GPIO handshake fail <===\n\n")
+                self.logger.debug(str(e) + "\n\n")
+                
                 self.conn_server_stat = False
                 self.blinking_flag = True
                 try:
