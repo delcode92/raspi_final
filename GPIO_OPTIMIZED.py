@@ -34,11 +34,14 @@ class GPIOHandler:
         # global variable
         print("set GPIO pin ... ")
         self.led1, self.led2, self.gate = 8,10,18
+        self.threads = 11 #31
         self.connected = 29
-        self.threads = 31
+        self.printerWarning = 32 #36
+
+        # buttons
         self.shutdown = 38
-        self.printerWarning = 36
-        self.resetPrintCounter = 11
+        self.resetPrintCounter = 15
+        self.restartService = 40
         
         self.loop1, self.loop2, self.button = 12,13,7
 
@@ -60,14 +63,19 @@ class GPIOHandler:
         self.blinking_flag = True
         
         
-        
         # self.run_GPIO()
         print("Run main thread ... ")
+        
+        ping = self.config['APP']['SERVER_PING_CMD']
+        optimized = int( self.config['APP']['GPIO_OPTIMIZED'] )
+        mt_sleep = int( self.config['APP']['MAIN_THREAD_SLEEP'] )
+        socket_timeout = int( self.config['APP']['  SOCKET_TIMEOUT'] )
+
         while True:
             
             try:
                 # 1. send ping -> always send each ping couple of seconds
-                response = os.system("ping -c 1 " + host)
+                response = os.system(ping+ " " + host)
                 self.logger.debug(f"ping to {host} response: ", response)
 
                 if response != 0:
@@ -83,7 +91,7 @@ class GPIOHandler:
                 try:
                     self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                     self.s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-                    self.s.settimeout(5)
+                    self.s.settimeout(socket_timeout)
                     self.s.connect((host, port))
 
                     self.s.sendall( bytes(f"GPIO handshake from {host}:{port}", 'utf-8') )
@@ -98,9 +106,6 @@ class GPIOHandler:
                     self.logger.info("get date from server ... ")
                     ###########################
 
-                    # run input RFID thread
-                    #start_new_thread( self.rfid_input,() )
-                    # self.run_GPIO()
                     self.conn_server_stat = True
 
                     # ======== connect indicator on ========
@@ -113,7 +118,6 @@ class GPIOHandler:
                 except Exception as e:
                     # ======== connect indicator off ========
                     if not self.blinking_thread:
-                        print("pernah stop blinking disini")
                         blink_thread = threading.Thread(target=self.blink)
                         blink_thread.start()
                     #======================================
@@ -125,7 +129,7 @@ class GPIOHandler:
         
             # run threads GPIO and rfid only once
             if not self.gpio_stat:
-                if int( self.config['APP']['GPIO_OPTIMIZED'] ):
+                if optimized:
                     op_GPIO_thread = threading.Thread(target=self.run_OPTIMIZED_GPIO)
                     op_GPIO_thread.start()
                 else:
@@ -141,11 +145,10 @@ class GPIOHandler:
                 GPIO.output(self.threads,GPIO.HIGH)
                 #======================================
 
-            sleep(15)
+            sleep(mt_sleep)
 
     def blinkPrinterWarning(self):
             GPIO.setup(self.printerWarning, GPIO.OUT)
-
             while True:
                 if self.blinking_printer_thread:
                     GPIO.output(self.printerWarning,GPIO.LOW)
@@ -253,7 +256,8 @@ class GPIOHandler:
         press_down = False
         press_up = False
         counter_down = 0
-        counter_up = 0
+        # counter_up = 0
+        gpio_sleep = float(self.config['APP']['GPIO_THREAD_SLEEP'])
 
         while True:
             
@@ -297,7 +301,36 @@ class GPIOHandler:
             elif GPIO.input(self.loop1) and self.printer_stat:
                 self.printer_stat = False
 
-            sleep(0.1)
+            # ================ btn shutdown /restart ==============
+            if GPIO.input(self.shutdown) == GPIO.HIGH:
+                counter_down += 1
+                press_down = True
+                print("press down")
+            elif GPIO.input(self.shutdown) == GPIO.LOW:
+       
+                if press_down:
+                    press_down = False #reset
+                    print("press up")
+                    press_up = True
+
+            if press_up:
+                press_up = False #reset
+                
+                # if press time more than 3 seconds
+                if counter_down > 6:
+                    print("shutdown")
+                    os.system( self.config['APP']['POWEROFF_CMD'] )
+
+                # if press time less than 3 seconds
+                elif counter_down < 6:
+                    # restart APP
+                    print("restart APP")
+                    os.system(self.config['APP']['RESTART_APP_CMD'])
+
+                counter_down = 0
+            # =============== end btn shutdown/reboot ==========
+
+            sleep(gpio_sleep)
 
     def run_GPIO(self):
         print("==> run GPIO thread")
@@ -317,7 +350,8 @@ class GPIOHandler:
         press_down = False
         press_up = False
         counter_down = 0
-        counter_up = 0
+        gpio_sleep = float(self.config['APP']['GPIO_THREAD_SLEEP'])
+        # reset_printer_sleep = float(self.config['APP']['RESET_PRINTER_COUNTER'])
 
         while True:
 
@@ -395,23 +429,23 @@ class GPIOHandler:
                 self.stateGate = False
 
             # ================ btn reset printer counter & counter led warning ==============
-            if GPIO.input(self.resetPrintCounter) == GPIO.LOW:
-                print("\n\n\n ALERT ==> RESET PRINTER COUNTER .... \n\n\n")
+            # if GPIO.input(self.resetPrintCounter) == GPIO.LOW:
+            #     print("\n\n\n ALERT ==> RESET PRINTER COUNTER .... \n\n\n")
                 
-                self.config['PRINTER']['COUNTER'] = "0"
+            #     self.config['PRINTER']['COUNTER'] = "0"
                 
-                path = os.path.expanduser('config.cfg')
-                with open(path, 'w') as configfile:
-                    self.config.write(configfile)
+            #     path = os.path.expanduser('config.cfg')
+            #     with open(path, 'w') as configfile:
+            #         self.config.write(configfile)
 
-                if not self.blinking_printer_thread:
-                    self.blinking_printer_thread = True
-                    sleep(1)
-                    self.blinking_printer_thread = False
-                else:
-                    self.blinking_printer_thread = False
+            #     if not self.blinking_printer_thread:
+            #         self.blinking_printer_thread = True
+            #         sleep(1)
+            #         self.blinking_printer_thread = False
+            #     else:
+            #         self.blinking_printer_thread = False
                 
-                sleep(0.3)
+            #     sleep(reset_printer_sleep)
             # =========================================================
 
 
@@ -445,10 +479,11 @@ class GPIOHandler:
             # =============== end btn shutdown/reboot ==========
             
 
-            sleep(0.1)
+            sleep(gpio_sleep)
 
     def rfid_input(self):
         print("===> run rfid thread")
+        rfid_sleep = float(self.config['APP']['RFID_THREAD_SLEEP'])
         while True:
             print("rfid thread ... ")
             rfid = input("input RFID: ")
@@ -473,10 +508,11 @@ class GPIOHandler:
                     self.logger.info("send RFID to server fail")
                     self.logger.error(str(e))
 
-            sleep(0.2)
+            sleep(rfid_sleep)
 
     def recv_server(self):
         print("===> run recv server thread")
+        recv_server_sleep = float(self.config['APP']['RECV_SERVER_THREAD_SLEEP'])
         while True:
 
             # maintains a list of possible input streams
@@ -487,7 +523,7 @@ class GPIOHandler:
             for socks in read_sockets:
                 if socks == self.s:
                     try:
-                        message = socks.recv(1024)
+                        message = socks.recv(1024 * int(self.config['APP']['BUFFER_MULTIPLY']))
                         message = message.decode("utf-8")
 
                         if message == "rfid-true":
@@ -528,9 +564,7 @@ class GPIOHandler:
                             self.logger.debug(message)
                             
                             self.logger.info("write to file ... ")
-                            # config = ConfigParser()
-                            # self.config.read('config.cfg')
-
+                            
                             self.config['ID']['LOKASI'] = message['tempat']                                
                             self.config['KARCIS']['FOOTER1'] = message['footer1']                                
                             self.config['KARCIS']['FOOTER2'] = message['footer2']                                
@@ -544,12 +578,11 @@ class GPIOHandler:
 
                         elif "date#" in message :
                             date_time = re.search('date#(.+?)#end', message).group(1)
-                            print("date from server: ", date_time)
-                            print(f"sudo date -s '{date_time}'")
-
+                            print("get-set date from server ...")
+                            # print(f"date -s '{date_time}'")
                             
                             # set raspi date
-                            os.system(f"sudo date -s '{date_time}'")
+                            os.system(f"{self.config['APP']['SET_DATE_CMD']} '{date_time}'")
                             self.setDate = True
                             sleep(3)
                             self.blinking_flag = False
@@ -557,7 +590,6 @@ class GPIOHandler:
                     except Exception as e:
                         self.logger.error(str(e))
                         
-            sleep(0.002)
+            sleep(recv_server_sleep)
 
 obj = GPIOHandler()
-
