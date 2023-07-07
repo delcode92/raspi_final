@@ -644,7 +644,7 @@ class GPIOHandler:
                             sleep(0.5)
                             GPIO.output(self.gate,GPIO.LOW)
                             self.logger.info("RELAY OFF")
-                            self.printer_stat = False
+                            #self.printer_stat = False
 
 
                         elif "config#" in message :
