@@ -69,7 +69,7 @@ class GPIOHandler:
         ping = self.config['APP']['SERVER_PING_CMD']
         optimized = int( self.config['APP']['GPIO_OPTIMIZED'] )
         mt_sleep = int( self.config['APP']['MAIN_THREAD_SLEEP'] )
-        socket_timeout = int( self.config['APP']['  SOCKET_TIMEOUT'] )
+        socket_timeout = int( self.config['APP']['SOCKET_TIMEOUT'] )
 
         while True:
             
@@ -129,8 +129,9 @@ class GPIOHandler:
         
             # run threads GPIO and rfid only once
             if not self.gpio_stat:
+                lp1 = int(self.config['APP']['USE_LOOP1'])
                 if optimized:
-                    op_GPIO_thread = threading.Thread(target=self.run_OPTIMIZED_GPIO)
+                    op_GPIO_thread = threading.Thread(target=self.run_OPTIMIZED_GPIO, args=(lp1,))
                     op_GPIO_thread.start()
                 else:
                     old_GPIO_thread = threading.Thread(target=self.run_GPIO)
@@ -239,7 +240,14 @@ class GPIOHandler:
         except Exception as e:
             print(str(e))
 
-    def run_OPTIMIZED_GPIO(self):
+    def restartAPP(self):
+        print("restart APP")
+        os.system(self.config['APP']['RESTART_APP_CMD'])
+    
+    def resetPrinter(self):
+        print("reset PRINTER")
+
+    def run_OPTIMIZED_GPIO(self, loop1):
         print("==> run GPIO thread")
         
         GPIO.setup(self.loop1, GPIO.IN, pull_up_down=GPIO.PUD_UP)
@@ -259,78 +267,157 @@ class GPIOHandler:
         # counter_up = 0
         gpio_sleep = float(self.config['APP']['GPIO_THREAD_SLEEP'])
 
-        while True:
-            
-            # kondisi masuk
-            if GPIO.input(self.loop1) == GPIO.LOW and GPIO.input(self.button) == GPIO.LOW and not self.printer_stat:
-                
-                # set to True , so  users cannot execute print barcode more than once
-                # just only when self.printer_stat = False, execute all process to print barcode  
-                self.printer_stat = True
+        # run restart app & reset printer
+        GPIO.add_event_detect(self.restartService, GPIO.FALLING, callback=self.restartAPP, bouncetime=1000)
+        GPIO.add_event_detect(self.resetPrintCounter, GPIO.FALLING, callback=self.resetPrinter, bouncetime=1000)
 
-                # if server not connect
-                if not self.conn_server_stat:
-                    self.logger.debug("server putus")
+        if loop1:
+            while True:
+                
+                # kondisi masuk
+                if GPIO.input(self.loop1) == GPIO.LOW and GPIO.input(self.button) == GPIO.LOW and not self.printer_stat:
                     
-                    try:
-                        time_now = datetime.now().strftime("%H%M%S")
+                    # set to True , so  users cannot execute print barcode more than once
+                    # just only when self.printer_stat = False, execute all process to print barcode  
+                    self.printer_stat = True
 
-                        self.print_barcode(str(time_now) ,status_online=False)
-                        self.logger.debug("by pass print here .... ")
-                    except Exception as e:
-                        self.logger.info("==> error", str(e))
+                    # if server not connect
+                    if not self.conn_server_stat:
+                        self.logger.debug("server putus")
+                        
+                        try:
+                            time_now = datetime.now().strftime("%H%M%S")
+
+                            self.print_barcode(str(time_now) ,status_online=False)
+                            self.logger.debug("by pass print here .... ")
+                        except Exception as e:
+                            self.logger.info("==> error", str(e))
 
 
-                # if server connect
-                elif self.conn_server_stat:
-                    time_now = datetime.now().strftime("%Y%m%d%H%M%S")
+                    # if server connect
+                    elif self.conn_server_stat:
+                        time_now = datetime.now().strftime("%Y%m%d%H%M%S")
 
-                    self.barcode = int(time_now[0:7]) - int(time_now[7:14])
-                    if self.barcode<0 : self.barcode=self.barcode * -1
+                        self.barcode = int(time_now[0:7]) - int(time_now[7:14])
+                        if self.barcode<0 : self.barcode=self.barcode * -1
 
-                    dict_txt = 'pushButton#{ "barcode":"'+str(self.barcode)+'", "time":"'+time_now+'", "gate":'+self.config['GATE']['NOMOR']+',"jns_kendaraan":"'+self.config['POSISI']['KENDARAAN']+'", "ip_raspi":"'+self.config['GATE']['IP']+'", "ip_cam":['+self.config['IP_CAM']['IP']+'] }#end'
-                    self.logger.debug(dict_txt)
+                        dict_txt = 'pushButton#{ "barcode":"'+str(self.barcode)+'", "time":"'+time_now+'", "gate":'+self.config['GATE']['NOMOR']+',"jns_kendaraan":"'+self.config['POSISI']['KENDARAAN']+'", "ip_raspi":"'+self.config['GATE']['IP']+'", "ip_cam":['+self.config['IP_CAM']['IP']+'] }#end'
+                        self.logger.debug(dict_txt)
 
-                    try:
-                        self.s.sendall( bytes(dict_txt, 'utf-8') )
-                        sleep(0.5)
-                    except Exception as e:
-                        self.logger.info("==> error", str(e))
+                        try:
+                            self.s.sendall( bytes(dict_txt, 'utf-8') )
+                            sleep(0.5)
+                        except Exception as e:
+                            self.logger.info("==> error", str(e))
 
-            # reset printer_stat
-            elif GPIO.input(self.loop1) and self.printer_stat:
-                self.printer_stat = False
+                # reset printer_stat
+                elif GPIO.input(self.loop1) and self.printer_stat:
+                    self.printer_stat = False
 
-            # ================ btn shutdown /restart ==============
-            if GPIO.input(self.shutdown) == GPIO.HIGH:
-                counter_down += 1
-                press_down = True
-                print("press down")
-            elif GPIO.input(self.shutdown) == GPIO.LOW:
-       
-                if press_down:
-                    press_down = False #reset
-                    print("press up")
-                    press_up = True
+                # ================ btn shutdown/reboot/restart APP ==============
+                if GPIO.input(self.shutdown) == GPIO.HIGH:
+                    counter_down += 1
+                    press_down = True
+                    print("press down")
+                elif GPIO.input(self.shutdown) == GPIO.LOW:
+        
+                    if press_down:
+                        press_down = False #reset
+                        print("press up")
+                        press_up = True
 
-            if press_up:
-                press_up = False #reset
+                if press_up:
+                    press_up = False #reset
+                    
+                    # if press time more than 3 seconds
+                    if counter_down > 6:
+                        print("shutdown RASPI")
+                        os.system( self.config['APP']['POWEROFF_CMD'] )
+
+                    # if press time less than 3 seconds
+                    elif counter_down < 6:
+                        # restart APP
+                        print("reboot RASPI")
+                        os.system(self.config['APP']['REBOOT_CMD'])
+
+                    counter_down = 0
+                # =============== end btn shutdown/reboot/ restart APP ==========
+
+                sleep(gpio_sleep)
+
+        else:
+            while True:
                 
-                # if press time more than 3 seconds
-                if counter_down > 6:
-                    print("shutdown")
-                    os.system( self.config['APP']['POWEROFF_CMD'] )
+                # kondisi masuk
+                if GPIO.input(self.button) == GPIO.LOW and not self.printer_stat:
+                    
+                    # set to True , so  users cannot execute print barcode more than once
+                    # just only when self.printer_stat = False, execute all process to print barcode  
+                    self.printer_stat = True
 
-                # if press time less than 3 seconds
-                elif counter_down < 6:
-                    # restart APP
-                    print("restart APP")
-                    os.system(self.config['APP']['RESTART_APP_CMD'])
+                    # if server not connect
+                    if not self.conn_server_stat:
+                        self.logger.debug("server putus")
+                        
+                        try:
+                            time_now = datetime.now().strftime("%H%M%S")
 
-                counter_down = 0
-            # =============== end btn shutdown/reboot ==========
+                            self.print_barcode(str(time_now) ,status_online=False)
+                            self.logger.debug("by pass print here .... ")
+                        except Exception as e:
+                            self.logger.info("==> error", str(e))
 
-            sleep(gpio_sleep)
+
+                    # if server connect
+                    elif self.conn_server_stat:
+                        time_now = datetime.now().strftime("%Y%m%d%H%M%S")
+
+                        self.barcode = int(time_now[0:7]) - int(time_now[7:14])
+                        if self.barcode<0 : self.barcode=self.barcode * -1
+
+                        dict_txt = 'pushButton#{ "barcode":"'+str(self.barcode)+'", "time":"'+time_now+'", "gate":'+self.config['GATE']['NOMOR']+',"jns_kendaraan":"'+self.config['POSISI']['KENDARAAN']+'", "ip_raspi":"'+self.config['GATE']['IP']+'", "ip_cam":['+self.config['IP_CAM']['IP']+'] }#end'
+                        self.logger.debug(dict_txt)
+
+                        try:
+                            self.s.sendall( bytes(dict_txt, 'utf-8') )
+                            sleep(0.5)
+                        except Exception as e:
+                            self.logger.info("==> error", str(e))
+
+                # reset printer_stat
+                elif self.printer_stat:
+                    self.printer_stat = False
+
+                # ================ btn shutdown /restart ==============
+                if GPIO.input(self.shutdown) == GPIO.HIGH:
+                    counter_down += 1
+                    press_down = True
+                    print("press down")
+                elif GPIO.input(self.shutdown) == GPIO.LOW:
+        
+                    if press_down:
+                        press_down = False #reset
+                        print("press up")
+                        press_up = True
+
+                if press_up:
+                    press_up = False #reset
+                    
+                    # if press time more than 3 seconds
+                    if counter_down > 6:
+                        print("shutdown")
+                        os.system( self.config['APP']['POWEROFF_CMD'] )
+
+                    # if press time less than 3 seconds
+                    elif counter_down < 6:
+                        # restart APP
+                        print("restart APP")
+                        os.system(self.config['APP']['RESTART_APP_CMD'])
+
+                    counter_down = 0
+                # =============== end btn shutdown/reboot ==========
+
+                sleep(gpio_sleep)
 
     def run_GPIO(self):
         print("==> run GPIO thread")
