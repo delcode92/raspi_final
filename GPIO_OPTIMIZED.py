@@ -53,6 +53,8 @@ class GPIOHandler:
         # buat koneksi socket utk GPIO
         host = self.config['APP']['SERVER_IP']
         port = int(self.config['APP']['PORT'])
+
+
         
                 
         self.gpio_stat = False
@@ -240,11 +242,11 @@ class GPIOHandler:
         except Exception as e:
             print(str(e))
 
-    def restartAPP(self):
+    def restartAPP(self, channel):
         print("restart APP")
         os.system(self.config['APP']['RESTART_APP_CMD'])
     
-    def resetPrinter(self):
+    def resetPrinter(self, channel):
         print("reset PRINTER")
 
     def run_OPTIMIZED_GPIO(self, loop1):
@@ -254,7 +256,8 @@ class GPIOHandler:
         GPIO.setup(self.loop2, GPIO.IN, pull_up_down=GPIO.PUD_UP)
         GPIO.setup(self.button, GPIO.IN, pull_up_down=GPIO.PUD_UP)
         GPIO.setup(self.shutdown, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
-        GPIO.setup(self.resetPrintCounter, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+        GPIO.setup(self.restartService, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+        GPIO.setup(self.resetPrintCounter, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
         
         GPIO.setup(self.led1, GPIO.OUT)
         GPIO.setup(self.led2, GPIO.OUT)
