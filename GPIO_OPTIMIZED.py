@@ -34,9 +34,9 @@ class GPIOHandler:
         # global variable
         print("set GPIO pin ... ")
         self.led1, self.led2, self.gate = 8,10,18
-        self.threads = 11
+        self.threads = 11 #31
         self.connected = 29
-        self.restartLed = 31
+        self.restartLed = 32
         self.printerWarning = 32 #36
 
         # buttons
@@ -256,7 +256,7 @@ class GPIOHandler:
         while True:
             if c == 3:
                 break
-            
+
             GPIO.output(self.restartLed,GPIO.HIGH)
             sleep(0.3)
             GPIO.output(self.restartLed,GPIO.LOW)
