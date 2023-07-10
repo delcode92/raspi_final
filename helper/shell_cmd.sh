@@ -1,0 +1,1 @@
+scp pi@192.168.100.82:/opt/selinux/pyinstaller_compiler/GPIO_OPTIMIZED.py D:\project\FINAL_RASPI\raspi_final\
