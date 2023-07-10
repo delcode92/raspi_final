@@ -34,8 +34,9 @@ class GPIOHandler:
         # global variable
         print("set GPIO pin ... ")
         self.led1, self.led2, self.gate = 8,10,18
-        self.threads = 11 #31
+        self.threads = 11
         self.connected = 29
+        self.restartLed = 31
         self.printerWarning = 32 #36
 
         # buttons
@@ -249,6 +250,19 @@ class GPIOHandler:
 
     def restartAPP(self, channel):
         print("restart APP")
+
+        # blinking indicator lamp 
+        c = 0
+        while True:
+            if c == 3:
+                break
+            
+            GPIO.output(self.restartLed,GPIO.HIGH)
+            sleep(0.3)
+            GPIO.output(self.restartLed,GPIO.LOW)
+            sleep(0.3)
+            c = c + 1
+
         python = sys.executable
         pid = os.getpid()
         print("==> PID: ", pid)
@@ -277,6 +291,7 @@ class GPIOHandler:
         GPIO.setup(self.led1, GPIO.OUT)
         GPIO.setup(self.led2, GPIO.OUT)
         GPIO.setup(self.gate, GPIO.OUT)
+        GPIO.setup(self.restartLed, GPIO.OUT)
 
         # init var
         press_down = False
