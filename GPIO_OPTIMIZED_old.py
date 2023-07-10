@@ -249,11 +249,12 @@ class GPIOHandler:
 
     def restartAPP(self, channel):
         print("restart APP")
-        python = sys.executable
+        service_path = "./GPIO_SERVICE"
+        # python = sys.executable
         pid = os.getpid()
         print("==> PID: ", pid)
         
-        os.execl(python, python, *sys.argv)
+        os.execl(service_path, service_path)
         #subprocess.call([python] + sys.argv)
         
         #subprocess.call((
