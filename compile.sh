@@ -3,9 +3,10 @@ rm config.cfg GPIO_OPTIMIZED.py restart.sh libxcb.so.1
 chmod 777 restart.sh
 
 # copy files from widget
-wget https://github.com/delcode92/raspi_final/raw/main/config.cfg
-wget https://github.com/delcode92/raspi_final/raw/main/GPIO_OPTIMIZED.py
-wget https://github.com/delcode92/raspi_final/raw/main/restart.sh
+
+wget https://raw.githubusercontent.com/delcode92/raspi_final/raw/main/config.cfg
+wget https://raw.githubusercontent.com/delcode92/raspi_final/raw/main/GPIO_OPTIMIZED.py
+wget https://raw.githubusercontent.com/delcode92/raspi_final/raw/main/restart.sh
 wget https://github.com/delcode92/raspi_final/raw/main/libxcb.so.1
 
 # run pyinstaller with .spec
@@ -24,10 +25,10 @@ cd /opt/selinux/pyinstaller_compiler/dist/GPIO_OPTIMIZED/helper
 
 rm blinking.py pin_on.py pin_off.py show_pin_value.py
 
-wget https://github.com/delcode92/raspi_final/raw/main/helper/blinking.py
-wget https://github.com/delcode92/raspi_final/raw/main/helper/pin_on.py
-wget https://github.com/delcode92/raspi_final/raw/main/helper/pin_off.py
-wget https://github.com/delcode92/raspi_final/raw/main/helper/show_pin_value.py
+wget https://raw.githubusercontent.com/delcode92/raspi_final/raw/main/helper/blinking.py
+wget https://raw.githubusercontent.com/delcode92/raspi_final/raw/main/helper/pin_on.py
+wget https://raw.githubusercontent.com/delcode92/raspi_final/raw/main/helper/pin_off.py
+wget https://raw.githubusercontent.com/delcode92/raspi_final/raw/main/helper/show_pin_value.py
 
 # back to target dir
 cd  /opt/selinux/pyinstaller_compiler/dist/
