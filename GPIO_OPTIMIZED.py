@@ -250,7 +250,8 @@ class GPIOHandler:
 
     def restartAPP(self, channel):
         print("restart APP")
-
+        GPIO.output(self.connected,GPIO.LOW)
+        
         # blinking indicator lamp 
         c = 0
         while True:
@@ -269,6 +270,7 @@ class GPIOHandler:
         print("==> PID: ", pid)
         
         os.execl(service_path, service_path)
+        
         #subprocess.call([python] + sys.argv)
         
         #subprocess.call((
