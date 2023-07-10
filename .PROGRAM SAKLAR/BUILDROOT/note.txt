@@ -1,0 +1,16 @@
+setelah flash bootloader image ke sdacard , jalankan step2 berikut:
+
+pada bootloader ada dua /dev/sda, cek dulu namanya
+baru di mounting
+
+
+#ssh setting
+buat folder .ssh di /root
+kemudian copy authorized_key kedalamnya
+
+#login setting
+edit/copy /etc/inittab file
+buat/copy file loginroot.sh di / 
+
+#small display/monitor setting
+edit/copy config.txt file
