@@ -1,1 +1,5 @@
+<<<<<<< HEAD
 {"tunnels":[{"name":"command_line","ID":"8c4240da841f2278273ca10371d7e04d","uri":"/api/tunnels/command_line","public_url":"tcp://0.tcp.ap.ngrok.io:18571","proto":"tcp","config":{"addr":"192.168.100.80:22","inspect":false},"metrics":{"conns":{"count":0,"gauge":0,"rate1":0,"rate5":0,"rate15":0,"p50":0,"p90":0,"p95":0,"p99":0},"http":{"count":0,"rate1":0,"rate5":0,"rate15":0,"p50":0,"p90":0,"p95":0,"p99":0}}}],"uri":"/api/tunnels"}
+=======
+
+>>>>>>> 6e80eb9fe4c068b4e5cb0b1c2af623c290aee4e3
