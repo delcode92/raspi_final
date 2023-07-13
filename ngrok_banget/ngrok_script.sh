@@ -15,9 +15,8 @@ sleep 3
 curl 127.0.0.1:4040/api/tunnels > ngrok_json.txt 
 
 
-sleep 3
+sleep 6
 
-#git push ngrok_json.txt
 
 cd /Users/Admin/Documents/project/raspi_final
 
