@@ -2,7 +2,7 @@
 
 SERVER="192.168.100.80"
 PATH_NGROK="/Users/Admin/Documents/project/raspi_final/ngrok_banget" 
-PATH_PROJ="/Users/Admin/Documents/project/raspi_final"
+PATH_PROJ="/Users/Admin/Documents/project/raspi_final/"
  
 # cd to path
 cd $PATH_NGROK
