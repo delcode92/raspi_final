@@ -19,7 +19,10 @@ sleep 3
 
 #git push ngrok_json.txt
 
-cd /Users/Admin/Documents/project/raspi_final 
+cd /Users/Admin/Documents/project/raspi_final
+
+git add --all
+git commit -m "update" 
 git push origin main 
 
 
