@@ -230,7 +230,7 @@ class GPIOHandler:
 
                 # Cut paper
                 if int(self.config['APP']['CUT_PAPER']):
-                    self.p.cut(feed=False)
+                    self.p.cut(mode="FULL")
                 self.p.close()
 
                 
