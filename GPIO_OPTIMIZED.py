@@ -1,5 +1,5 @@
 import RPi.GPIO as GPIO
-import sys, socket, select, os, re, json, subprocess
+import sys, socket, select, os, re, json
 from time import sleep
 from datetime import datetime
 import threading
