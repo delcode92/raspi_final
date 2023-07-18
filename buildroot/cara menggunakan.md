@@ -10,6 +10,6 @@ https://drive.google.com/file/d/1zF-XQ6zPEdjcZV2OnQCQ4xGuUdf9vYbQ/view?usp=shari
 3. jalankan make
 
 ============================================
-\n atau langsung restore sdcard.img \n
+</br> atau langsung restore sdcard.img </br>
 
 https://drive.google.com/file/d/1nM68v99mQZzED3GLg4Q31OMOYPSkWFwV/view?usp=sharing
