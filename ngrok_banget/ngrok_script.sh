@@ -1,12 +1,12 @@
 #!/bin/bash
-#2SSvqyZhIEy1NgCB5U7WZbkI7bn_3Zu7gPk1KPYsbu6FQFEDx
 
-SERVER="192.168.100.80"
-PATH_NGROK="/Users/Admin/Documents/project/raspi_final/ngrok_banget" 
-PATH_PROJ="/Users/Admin/Documents/project/raspi_final/"
+SERVER="127.0.0.1"
+PATH_PROJ="~/mk_serv"
  
 # cd to path
-cd $PATH_NGROK
+cd $PATH_PROJ
+
+
 
 #run ngrok service
 ngrok tcp $SERVER:22 &
