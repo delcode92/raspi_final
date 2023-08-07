@@ -19,5 +19,12 @@ ngrok config add-authtoken $KEY
 # go to home
 cd ~
 
+# remove last proj
+sudo rm -r ~/mk_serv
+
 # clone repo
 git clone https://github.com/delcode92/mk_serv.git
+
+echo "******************************************"
+echo "=============== FINISH ================== "
+echo "******************************************"
