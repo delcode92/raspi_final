@@ -610,9 +610,9 @@ class GPIOHandler:
         while True:
             print("rfid thread ... ")
             rfid = input("input RFID: ")
-            print("==> nilai rfid: ", rfid)
 
             if rfid != "":
+                print("==> nilai rfid: ", rfid)
 
                 # send to server
                 try:
@@ -631,6 +631,7 @@ class GPIOHandler:
                     self.logger.info("send RFID to server fail")
                     self.logger.error(str(e))
 
+            
             sleep(rfid_sleep)
 
     def recv_server(self):
@@ -648,6 +649,10 @@ class GPIOHandler:
                     try:
                         message = socks.recv(1024 * int(self.config['APP']['BUFFER_MULTIPLY']))
                         message = message.decode("utf-8")
+
+                        print("\n\n\n=message recv=")
+                        print(message)
+                        print("=====================\n\n\n")
 
                         if message == "rfid-true":
                             self.logger.info("open Gate Utk Karyawan")
@@ -709,6 +714,7 @@ class GPIOHandler:
                             self.setDate = True
                             sleep(3)
                             self.blinking_flag = False
+
 
                     except Exception as e:
                         self.logger.error(str(e))
