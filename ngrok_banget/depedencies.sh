@@ -1,6 +1,10 @@
 #!/bin/bash
 KEY=2SSvqyZhIEy1NgCB5U7WZbkI7bn_3Zu7gPk1KPYsbu6FQFEDx
 
+echo "******************************************"
+echo "====== START BUILDING DEPEDENCIES ======== "
+echo "******************************************"
+
 # install git
 sudo apt install git-all
 
