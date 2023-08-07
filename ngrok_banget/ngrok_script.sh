@@ -22,6 +22,8 @@ sleep 6
 
 cd $PATH_PROJ
 
+git config --global user.email "delcode92@gmail.com"
+git config --global user.name "delcode92"
 
 git add --all
 git commit -m "update" 
