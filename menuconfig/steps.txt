@@ -1,0 +1,23 @@
+#1. buildroot config 
+- pilih tipe raspi
+- import buildroot y/n
+
+===== clear section====
+- clear python
+
+===== make section====
+- make buildroot
+
+#2. compile raspi
+
+must:
+1. has .spec teplate string
+2. can add important string via input box dialog
+
+- pyinstaller compile
+  - initialize destination directory name
+  - add external lib in *.spec file
+  - compile
+
+- copy important files to dest directory
+- copy/move to target sdcard directory
