@@ -8,6 +8,9 @@ echo "******************************************"
 # install git
 sudo apt install git-all
 
+# hide ngrok with screen
+sudo apt install screen
+
 # install curl
 sudo apt install curl
 
@@ -27,7 +30,7 @@ cd ~
 sudo rm -r ~/mk_serv
 
 # clone repo
-git clone https://github.com/delcode92/mk_serv.git
+git clone git@github.com:projmk9/mk_serv.git
 
 echo "******************************************"
 echo "=============== FINISH ================== "
