@@ -70,21 +70,22 @@ class GPIOHandler:
         print("Run main thread ... ")
 
         ping = self.config['APP']['SERVER_PING_CMD']
+        server_ip = self.config['APP']['SERVER_IP']
         optimized = int( self.config['APP']['GPIO_OPTIMIZED'] )
         mt_sleep = int( self.config['APP']['MAIN_THREAD_SLEEP'] )
         socket_timeout = int( self.config['APP']['SOCKET_TIMEOUT'] )
 
+        print("Run network PING thread as daemon ... ")
+        network_ping_thread = threading.Thread(target=self.network_ping, args=(ping, server_ip, mt_sleep))
+        network_ping_thread.setDaemon(True) 
+        network_ping_thread.start()
+
         while True:
 
             try:
-                # 1. send ping -> always send each ping couple of seconds
-                response = os.system(ping+ " " + host)
-
-                if response != 0:
-                    self.s = None
-
+                
                 # 2. send bytes of data string
-                self.s.sendall( bytes(f"client({host}) connected", 'utf-8') )
+                self.s.sendall( bytes(f"SOCKET-PING from client ... ", 'utf-8') )
                 self.blinking_flag = False
             except Exception as e:
                 self.logger.debug("\n\n===> GPIO handshake fail <===\n\n")
@@ -606,6 +607,23 @@ class GPIOHandler:
 
 
             sleep(gpio_sleep)
+
+    def network_ping(self, ping_cmd, server_ip, mt_sleep):
+        
+        while True:
+            try:
+                # 1. send ping -> always send each ping couple of seconds
+                response = os.system(ping_cmd+ " " + server_ip)
+
+                if response != 0:
+                    self.s = None
+
+            except Exception as e:
+                self.logger.debug("NETWORK PING ERROR: \n")
+                self.logger.debug(str(e) + "\n\n")
+
+            # network ping run first -5 seconds before send `SOCKET-PING` data to server
+            sleep(mt_sleep-5)
 
     def rfid_input(self):
         print("===> run rfid thread")
