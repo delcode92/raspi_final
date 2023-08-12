@@ -75,9 +75,9 @@ class GPIOHandler:
         mt_sleep = int( self.config['APP']['MAIN_THREAD_SLEEP'] )
         socket_timeout = int( self.config['APP']['SOCKET_TIMEOUT'] )
 
-        print("Run network PING thread as daemon ... ")
+        print("Run network PING thread ... ")
+
         network_ping_thread = threading.Thread(target=self.network_ping, args=(ping, server_ip, mt_sleep))
-        network_ping_thread.setDaemon(True) 
         network_ping_thread.start()
 
         while True:
@@ -613,7 +613,7 @@ class GPIOHandler:
         while True:
             try:
                 # 1. send ping -> always send each ping couple of seconds
-                response = os.system(ping_cmd+ " " + server_ip)
+                response = os.system(ping_cmd+ " " + server_ip + " > /dev/null 2>&1")
 
                 if response != 0:
                     self.s = None
@@ -735,7 +735,6 @@ class GPIOHandler:
                             self.setDate = True
                             sleep(3)
                             self.blinking_flag = False
-
 
                     except Exception as e:
                         self.logger.error(str(e))
