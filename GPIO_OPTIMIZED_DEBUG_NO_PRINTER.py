@@ -506,7 +506,9 @@ class GPIOHandler:
                 response = os.system(ping_cmd+ " " + server_ip + " > /dev/null 2>&1")
 
                 if response != 0:
+                    print("\n\n=========network ping None==========")
                     self.s = None
+                    print("============************===============\n\n")
 
             except Exception as e:
                 self.logger.debug("NETWORK PING ERROR: \n")
