@@ -554,12 +554,31 @@ class GPIOHandler:
             sockets_list = [sys.stdin, self.s]
 
             print("\n\n======socket list==========")
+            # [
+            # <_io.TextIOWrapper name='<stdin>' mode='r' encoding='utf-8'>, 
+            # <socket.socket fd=11, 
+                # family=AddressFamily.AF_INET, 
+                # type=SocketKind.SOCK_STREAM, 
+                # proto=0, 
+                # laddr=('192.168.100.173', 51196), 
+                # raddr=('192.168.100.171', 65430)
+            # >
+            # ]
             print(sockets_list)
             print("======end socket list==========\n\n")
 
             read_sockets,write_socket, error_socket = select.select(sockets_list,[],[])
+            
+            print("\n\n======read_sockets==========")
+            print(sockets_list)
+            print("======end read_sockets ==========\n\n")
 
             for socks in read_sockets:
+                print("\n\n======checking sockets==========")
+                print("socks: ", socks)
+                print("self.s: ", self.s)
+                print("======end checking sockets ==========\n\n")
+
                 if socks == self.s:
                     try:
                         message = socks.recv(1024 * int(self.config['APP']['BUFFER_MULTIPLY']))
