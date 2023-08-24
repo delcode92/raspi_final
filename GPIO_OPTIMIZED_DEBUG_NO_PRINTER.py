@@ -387,7 +387,7 @@ class GPIOHandler:
                             self.s.sendall( bytes(dict_txt, 'utf-8') )
                             sleep(0.5)
                         except Exception as e:
-                            self.logger.info("==> error", str(e))
+                            self.logger.info(str(e))
 
                 # reset printer_stat
                 elif GPIO.input(self.loop1) and self.printer_stat:
@@ -552,6 +552,10 @@ class GPIOHandler:
 
             # maintains a list of possible input streams
             sockets_list = [sys.stdin, self.s]
+
+            print("\n\n======socket list==========")
+            print(sockets_list)
+            print("======end socket list==========\n\n")
 
             read_sockets,write_socket, error_socket = select.select(sockets_list,[],[])
 
