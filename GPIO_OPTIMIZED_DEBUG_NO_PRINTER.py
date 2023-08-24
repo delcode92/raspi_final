@@ -80,8 +80,8 @@ class GPIOHandler:
 
         print("Run network PING thread ... ")
 
-        network_ping_thread = threading.Thread(target=self.network_ping, args=(ping, server_ip, mt_sleep))
-        network_ping_thread.start()
+        # network_ping_thread = threading.Thread(target=self.network_ping, args=(ping, server_ip, mt_sleep))
+        # network_ping_thread.start()
 
         # send data simulation via thread loop
         simulation_thread = threading.Thread(target=self.dataSimulation)
