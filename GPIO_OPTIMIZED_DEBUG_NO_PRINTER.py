@@ -21,8 +21,8 @@ class GPIOHandler:
     def __init__(self, data_count, timing) -> None:
 
         # simulation variable
-        self.DCount = data_count
-        self.DTiming = timing
+        self.DCount = int(data_count)
+        self.DTiming = float(timing)
 
         # read config file
         print("read config file ...")
