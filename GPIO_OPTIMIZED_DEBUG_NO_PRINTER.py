@@ -1,5 +1,5 @@
 import RPi.GPIO as GPIO
-import sys, socket, select, os, re, json
+import sys, socket, select, os, re, json, random
 from time import sleep
 from datetime import datetime
 import threading
@@ -18,12 +18,11 @@ class logging:
         if self.stat: print(msg)
 
 class GPIOHandler:
-    def __init__(self, data_count, timing) -> None:
+    def __init__(self, data_count) -> None:
 
         # simulation variable
         self.DCount = int(data_count)
-        self.DTiming = float(timing)
-
+        
         # read config file
         print("read config file ...")
         self.config = ConfigParser()
@@ -177,6 +176,7 @@ class GPIOHandler:
 
 
         for i in range(self.DCount):
+            t = random.randint(2, 10)
             print(f"======== Start Karcis{i} ======")
             
             # set pin ON-OFF based on real case
@@ -194,7 +194,7 @@ class GPIOHandler:
 
             print(f"======== Finish Karcis{i} ======")
 
-            sleep(self.DTiming)
+            sleep(t)
 
     def blinkPrinterWarning(self):
             GPIO.setup(self.printerWarning, GPIO.OUT)
@@ -656,4 +656,4 @@ class GPIOHandler:
 
             sleep(recv_server_sleep)
 
-obj = GPIOHandler(sys.argv[1], sys.argv[2])
+obj = GPIOHandler(sys.argv[1])
