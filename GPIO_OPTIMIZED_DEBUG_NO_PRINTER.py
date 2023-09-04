@@ -253,14 +253,14 @@ class GPIOHandler:
             out_ep = int( self.config['PRINTER']['OUT'], 16 )
 
             new_time_text = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
-            self.p = Usb(vid, pid , timeout = 0, in_ep = in_ep, out_ep = out_ep)
+            # self.p = Usb(vid, pid , timeout = 0, in_ep = in_ep, out_ep = out_ep)
             paper_stat = 2
 
             # plenty of paper
             if paper_stat == 2:
                 # Print text
-                self.p.set('center', density=0)
-                self.p.text(location + "\n" + company + "\n------------------------------------\n" + gate_name + " " + gate_num + " | " + vehicle_type + "\n" + new_time_text + "\n")
+                # self.p.set('center', density=0)
+                # self.p.text(location + "\n" + company + "\n------------------------------------\n" + gate_name + " " + gate_num + " | " + vehicle_type + "\n" + new_time_text + "\n")
 
                 print("\n---------------BARCODE---------------------\n")
                 if status_online==False:
@@ -269,9 +269,9 @@ class GPIOHandler:
 
                 print(str(barcode))
                 print("\n---------------END BARCODE---------------------\n")
-                self.p.barcode("{B" + str(barcode), "CODE128", height=50, width=2, function_type="B")
+                # self.p.barcode("{B" + str(barcode), "CODE128", height=50, width=2, function_type="B")
 
-                self.p.text("------------------------------------\n" + footer1 + "\n" + footer2 + "\n" + footer3 + "\n" + footer4)
+                # self.p.text("------------------------------------\n" + footer1 + "\n" + footer2 + "\n" + footer3 + "\n" + footer4)
 
                 # Cut paper
                 # if int(self.config['APP']['CUT_PAPER']):

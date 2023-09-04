@@ -1,5 +1,5 @@
 import RPi.GPIO as GPIO
-import sys, socket, select, os, re, json
+import sys, socket, select, os, re, json, random
 from time import sleep
 from datetime import datetime
 import threading
@@ -20,6 +20,7 @@ class logging:
 class GPIOHandler:
     def __init__(self) -> None:
 
+        
         # read config file
         print("read config file ...")
         self.config = ConfigParser()
@@ -66,7 +67,6 @@ class GPIOHandler:
         self.blinking_flag = True
 
 
-        # self.run_GPIO()
         print("Run main thread ... ")
 
         ping = self.config['APP']['SERVER_PING_CMD']
@@ -77,8 +77,8 @@ class GPIOHandler:
 
         print("Run network PING thread ... ")
 
-        network_ping_thread = threading.Thread(target=self.network_ping, args=(ping, server_ip, mt_sleep))
-        network_ping_thread.start()
+        # network_ping_thread = threading.Thread(target=self.network_ping, args=(ping, server_ip, mt_sleep))
+        # network_ping_thread.start()
 
         while True:
 
@@ -212,14 +212,14 @@ class GPIOHandler:
             out_ep = int( self.config['PRINTER']['OUT'], 16 )
 
             new_time_text = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
-            # self.p = Usb(vid, pid , timeout = 0, in_ep = in_ep, out_ep = out_ep)
+            self.p = Usb(vid, pid , timeout = 0, in_ep = in_ep, out_ep = out_ep)
             paper_stat = 2
 
             # plenty of paper
             if paper_stat == 2:
                 # Print text
-                # self.p.set('center', density=0)
-                # self.p.text(location + "\n" + company + "\n------------------------------------\n" + gate_name + " " + gate_num + " | " + vehicle_type + "\n" + new_time_text + "\n")
+                self.p.set('center', density=0)
+                self.p.text(location + "\n" + company + "\n------------------------------------\n" + gate_name + " " + gate_num + " | " + vehicle_type + "\n" + new_time_text + "\n")
 
                 print("\n---------------BARCODE---------------------\n")
                 if status_online==False:
@@ -228,14 +228,14 @@ class GPIOHandler:
 
                 print(str(barcode))
                 print("\n---------------END BARCODE---------------------\n")
-                # self.p.barcode("{B" + str(barcode), "CODE128", height=50, width=2, function_type="B")
+                self.p.barcode("{B" + str(barcode), "CODE128", height=50, width=2, function_type="B")
 
-                # self.p.text("------------------------------------\n" + footer1 + "\n" + footer2 + "\n" + footer3 + "\n" + footer4)
+                self.p.text("------------------------------------\n" + footer1 + "\n" + footer2 + "\n" + footer3 + "\n" + footer4)
 
                 # Cut paper
-                # if int(self.config['APP']['CUT_PAPER']):
-                #     self.p.cut(mode="FULL")
-                # self.p.close()
+                if int(self.config['APP']['CUT_PAPER']):
+                    self.p.cut(mode="FULL")
+                self.p.close()
 
 
             # if offline still open gate after print struct
@@ -348,7 +348,7 @@ class GPIOHandler:
                             self.s.sendall( bytes(dict_txt, 'utf-8') )
                             sleep(0.5)
                         except Exception as e:
-                            self.logger.info("==> error", str(e))
+                            self.logger.info(str(e))
 
                 # reset printer_stat
                 elif GPIO.input(self.loop1) and self.printer_stat:
@@ -459,155 +459,6 @@ class GPIOHandler:
 
                 sleep(gpio_sleep)
 
-    def run_GPIO(self):
-        print("==> run GPIO thread")
-        GPIO.setup(self.loop1, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-        GPIO.setup(self.loop2, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-
-        GPIO.setup(self.button, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-
-        GPIO.setup(self.shutdown, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
-        GPIO.setup(self.resetPrintCounter, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-
-        GPIO.setup(self.led1, GPIO.OUT)
-        GPIO.setup(self.led2, GPIO.OUT)
-        GPIO.setup(self.gate, GPIO.OUT)
-
-        # init var
-        press_down = False
-        press_up = False
-        counter_down = 0
-        gpio_sleep = float(self.config['APP']['GPIO_THREAD_SLEEP'])
-        # reset_printer_sleep = float(self.config['APP']['RESET_PRINTER_COUNTER'])
-
-        while True:
-
-            if GPIO.input(self.loop1) == GPIO.LOW and not self.stateLoop1:
-
-                self.logger.debug("LOOP 1 ON (Vehicle Incoming)")
-                self.stateLoop1 = True
-                self.bypass_print = True
-                self.bypass_rfid = True
-                GPIO.output(self.led1,GPIO.HIGH)
-
-            elif GPIO.input(self.loop1) == GPIO.HIGH and self.stateLoop1:
-                self.logger.debug("LOOP 1 OFF (Vehicle Start Moving)")
-                self.stateLoop1 = False
-                self.stateGate = False
-                GPIO.output(self.led1,GPIO.LOW)
-
-            if ( GPIO.input(self.button) == GPIO.LOW and
-                GPIO.input(self.loop1) == GPIO.LOW and
-                not self.stateButton and
-                not self.stateGate ):
-
-                # send datetime to server & self.time_now save to property --> can be called when print
-                time_now = datetime.now().strftime("%Y%m%d%H%M%S")
-
-                # send barcode and datetime here
-                # barcode --> shorten
-                #  2.023.011  - 2.246.060 = 901501
-                # 2023-01-12 24:60:60
-                self.barcode = int(time_now[0:7]) - int(time_now[7:14])
-                if self.barcode<0 : self.barcode=self.barcode * -1
-
-                dict_txt = 'pushButton#{ "barcode":"'+str(self.barcode)+'", "time":"'+time_now+'", "gate":'+self.config['GATE']['NOMOR']+',"jns_kendaraan":"'+self.config['POSISI']['KENDARAAN']+'", "ip_raspi":"'+self.config['GATE']['IP']+'", "ip_cam":['+self.config['IP_CAM']['IP']+'] }#end'
-                self.logger.debug(dict_txt)
-
-                try:
-                    # komen disini
-                    print("==> coba print ... stat server: ", self.conn_server_stat)
-
-                    if not self.conn_server_stat:
-                        print("server putus")
-                        # potensi bug, disini bro
-                        try:
-                            time_now = datetime.now().strftime("%H%M%S")
-
-                            self.print_barcode(str(time_now) ,status_online=False)
-                            print("by pass print here .... ")
-                        except Exception as e:
-                            print("==> error", str(e))
-
-                    elif self.conn_server_stat:
-
-                        # if print button pushed more than once
-                        if not self.printer_stat:
-                            self.printer_stat = True
-                            self.s.sendall( bytes(dict_txt, 'utf-8') )
-                            sleep(1)
-
-                except Exception as e:
-                    self.logger.error(str(e))
-
-            elif GPIO.input(self.button) == GPIO.HIGH and GPIO.input(self.loop1) == GPIO.LOW and self.stateButton:
-                self.logger.info("BUTTON OFF")
-                self.stateButton = False
-                GPIO.output(self.led2,GPIO.LOW)
-
-            if GPIO.input(self.loop2) == GPIO.LOW and not self.stateLoop2:
-                self.logger.info("LOOP 2 ON (Vehicle Moving In)")
-                self.stateLoop2 = True
-
-            elif GPIO.input(self.loop2) == GPIO.HIGH and self.stateLoop2:
-                self.logger.info("LOOP 2 OFF (Vehicle In)")
-                self.logger.info(".........(Gate Close)")
-                self.stateLoop2 = False
-                self.stateGate = False
-
-            # ================ btn reset printer counter & counter led warning ==============
-            # if GPIO.input(self.resetPrintCounter) == GPIO.LOW:
-            #     print("\n\n\n ALERT ==> RESET PRINTER COUNTER .... \n\n\n")
-
-            #     self.config['PRINTER']['COUNTER'] = "0"
-
-            #     path = os.path.expanduser('config.cfg')
-            #     with open(path, 'w') as configfile:
-            #         self.config.write(configfile)
-
-            #     if not self.blinking_printer_thread:
-            #         self.blinking_printer_thread = True
-            #         sleep(1)
-            #         self.blinking_printer_thread = False
-            #     else:
-            #         self.blinking_printer_thread = False
-
-            #     sleep(reset_printer_sleep)
-            # =========================================================
-
-
-            # ================ btn shutdown /restart ==============
-            if GPIO.input(self.shutdown) == GPIO.HIGH:
-                counter_down += 1
-                press_down = True
-                print("press down")
-            elif GPIO.input(self.shutdown) == GPIO.LOW:
-
-                if press_down:
-                    press_down = False #reset
-                    print("press up")
-                    press_up = True
-
-            if press_up:
-                press_up = False #reset
-
-                # if press time more than 3 seconds
-                if counter_down > 6:
-                    print("shutdown")
-                    os.system( self.config['APP']['POWEROFF_CMD'] )
-
-                # if press time less than 3 seconds
-                elif counter_down < 6:
-                    # restart APP
-                    print("restart APP")
-                    os.system(self.config['APP']['RESTART_APP_CMD'])
-
-                counter_down = 0
-            # =============== end btn shutdown/reboot ==========
-
-
-            sleep(gpio_sleep)
-
     def network_ping(self, ping_cmd, server_ip, mt_sleep):
         
         while True:
@@ -616,7 +467,9 @@ class GPIOHandler:
                 response = os.system(ping_cmd+ " " + server_ip + " > /dev/null 2>&1")
 
                 if response != 0:
+                    print("\n\n=========network ping None==========")
                     self.s = None
+                    print("============************===============\n\n")
 
             except Exception as e:
                 self.logger.debug("NETWORK PING ERROR: \n")
@@ -627,33 +480,49 @@ class GPIOHandler:
 
     def rfid_input(self):
         print("===> run rfid thread")
-        rfid_sleep = float(self.config['APP']['RFID_THREAD_SLEEP'])
-        while True:
-            print("rfid thread ... ")
-            rfid = input("input RFID: ")
+        # rfid_sleep = float(self.config['APP']['RFID_THREAD_SLEEP'])
+        filter_rfid = int(self.config['APP']['FILTER_RFID'])
+        
+        if filter_rfid:
+            while True:
+                print("rfid thread ... ")
+                rfid = input("input RFID: ")
 
-            if rfid != "":
-                print("==> nilai rfid: ", rfid)
+                if rfid != "":
+                    print("==> nilai rfid: ", rfid)
 
-                # send to server
-                try:
-                    print("===> server stat: ", self.conn_server_stat)
+                    # send to server
+                    try:
+                        print("===> server stat: ", self.conn_server_stat)
 
-                    if self.conn_server_stat:
-                        self.s.sendall( bytes(f"rfid#{rfid}#end", 'utf-8') )
+                        if self.conn_server_stat:
+                            self.s.sendall( bytes(f"rfid#{rfid}#end", 'utf-8') )
 
-                    elif not self.conn_server_stat:
-                        # still open gate if fail
-                        GPIO.output(self.gate,GPIO.HIGH)
-                        sleep(1)
-                        GPIO.output(self.gate,GPIO.LOW)
+                        elif not self.conn_server_stat:
+                            # still open gate if fail
+                            GPIO.output(self.gate,GPIO.HIGH)
+                            sleep(1)
+                            GPIO.output(self.gate,GPIO.LOW)
 
-                except Exception as e:
-                    self.logger.info("send RFID to server fail")
-                    self.logger.error(str(e))
+                    except Exception as e:
+                        self.logger.info("send RFID to server fail")
+                        self.logger.error(str(e))
 
+        else:
+            while True:
+                print("rfid thread ... ")
+                rfid = input("input RFID: ")
+
+                if rfid != "":
+                    print("==> nilai rfid: ", rfid)
+                    self.logger.info("open Gate Utk Karyawan\n\n")
+
+                    GPIO.output(self.gate,GPIO.HIGH)
+                    sleep(1)
+                    GPIO.output(self.gate,GPIO.LOW)
             
-            sleep(rfid_sleep)
+
+                # sleep(rfid_sleep)
 
     def recv_server(self):
         print("===> run recv server thread")
@@ -663,9 +532,32 @@ class GPIOHandler:
             # maintains a list of possible input streams
             sockets_list = [sys.stdin, self.s]
 
+            print("\n\n======socket list==========")
+            # [
+            # <_io.TextIOWrapper name='<stdin>' mode='r' encoding='utf-8'>, 
+            # <socket.socket fd=11, 
+                # family=AddressFamily.AF_INET, 
+                # type=SocketKind.SOCK_STREAM, 
+                # proto=0, 
+                # laddr=('192.168.100.173', 51196), 
+                # raddr=('192.168.100.171', 65430)
+            # >
+            # ]
+            print(sockets_list)
+            print("======end socket list==========\n\n")
+
             read_sockets,write_socket, error_socket = select.select(sockets_list,[],[])
+            
+            print("\n\n======read_sockets==========")
+            print(sockets_list)
+            print("======end read_sockets ==========\n\n")
 
             for socks in read_sockets:
+                print("\n\n======checking sockets==========")
+                print("socks: ", socks)
+                print("self.s: ", self.s)
+                print("======end checking sockets ==========\n\n")
+
                 if socks == self.s:
                     try:
                         message = socks.recv(1024 * int(self.config['APP']['BUFFER_MULTIPLY']))
